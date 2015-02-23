@@ -40,9 +40,9 @@ function usernameTaken($username){
 		$val = exec("ls -d ".$userpath);
 
 		if (!empty($val)){
-			return ($val == $userpath)?"true":false;
+			return ($val == $userpath);
 		}else{
-			return "false";
+			return false;
 		}
 	}
 	
@@ -50,16 +50,22 @@ function usernameTaken($username){
 }
 
 
-if ($_GET['usernametaken']){
+if ($_GET['usernameok']){
 
-	$username = $_GET['usernametaken'];
+	$username = $_GET['usernameok'];
 	
-	$taken = false;
-	if (usernameValid($username)){
+	$taken = "false";
+	$valid = usernameValid($username);
+	if ($valid){
 		$taken = usernameTaken($username);
 	}
 	
-	echo '{"taken": '.$taken."}";
+	// convert to strings
+	$taken = $taken?"true":"false";
+	$valid = $valid?"true":"false";
+	
+	echo '{"taken": '.$taken.', "valid": '.$valid.' }';
+	
 	
 	return;
 
@@ -92,15 +98,16 @@ if ($_POST['email'] && $_POST['username'] && $_POST['password']){
 	}
 	
 	
-	$verify = urlencode("http://www.cs.umb.edu/~joecohen/apply/web/?email=$to&username=$username&password=$password&time=$time&verify=$verify");
+	$verify = "http://www.cs.umb.edu/~joecohen/apply/web/?email=$email&username=$username&password=$password&time=$time&verify=$verify";
 	
 	
 	$to      = $email;
 	$subject = 'Please Verify Your Account';
 	
 	$message = '<html><body>';
-	$message = 'Hello,<br>';
-	$message = "<a href='$verify'>Click here to verify your account</a>";
+	$message .= 'Hello,<br>';
+	$message .= "<a href='$verify'>Click here to verify your account</a> <br>or go to this URL:";
+	$message .= "$verify";
 	$message .= "</body></html>";
 	
 	$headers = 'From: UMB CS Apply System <joecohen@cs.umb.edu>' . "\r\n" .
@@ -109,11 +116,11 @@ if ($_POST['email'] && $_POST['username'] && $_POST['password']){
 	$headers .= "MIME-Version: 1.0\r\n";
 	$headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
 	
-	echo $message;
+	//echo $message;
 	
-	//mail($to, $subject, $message, $headers);
+	mail($to, $subject, $message, $headers);
 	
-	echo "Thanks";
+	echo "Thanks, email is on it's way. Just click the link inside.";
 	return;
 	
 }
@@ -146,6 +153,17 @@ if ($_GET['email'] && $_GET['verify'] && $_GET['username'] && $_GET['password'] 
 	
 	//check for valid email format
 	
+	
+	try {
+		$myfile = fopen("requests/".$username, "w") or die("Unable to write to filesystem!");;
+		
+		$txt = "$username\n$email\n$password\n$time\n";
+
+		fwrite($myfile, $txt);
+		fclose($myfile);
+	} catch (Exception $e) {
+		echo 'Caught exception: ',  $e->getMessage(), "\n";
+	}
 	
 	
 	echo "Verified account for ".$username;
@@ -187,32 +205,81 @@ function processPassword(){
 }
 
 
+function validateUsername(){
+	username = $("#username").val();
+
+	if (username == ""){
+
+		$("#usernameinput").removeClass("has-error");
+		$("#usernameerrortext").html();
+		return;
+	}
+
+	
+	$.getJSON( "?usernameok=" + username, function( data ) {
+
+		console.log(data.taken);
+		
+			if (data.taken || !data.valid){
+				$("#usernameinput").addClass("has-error");
+			}else{
+				$("#usernameinput").removeClass("has-error");
+				$("#usernameerrortext").html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Looks Good!');
+				
+			}
+
+			if (data.taken){
+				$("#usernameerrortext").html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Taken');
+			}
+
+			if (!data.valid){
+				$("#usernameerrortext").html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Not Valid');
+			}
+	});
+}
+
+
+function validateEmail(){
+	email = $("#email").val();
+
+	if (email == ""){
+		
+		$("#emailerrortext").html();
+		$("#emailinput").removeClass("has-error");
+		return;
+	}
+
+	if (endsWith(email,"@umb.edu")){
+		$("#emailinput").removeClass("has-error");
+		$("#emailerrortext").html('<span class="glyphicon glyphicon-ok" aria-hidden="true"></span> Looks Good!');
+	}else{
+		$("#emailinput").addClass("has-error");
+		$("#emailerrortext").html('<span class="glyphicon glyphicon-remove" aria-hidden="true"></span> Must be a @umb.edu email');
+	}
+}
+
+function endsWith(str, suffix) {
+    return str.indexOf(suffix, str.length - suffix.length) !== -1;
+}
 
 $(function(){
 	
 	processPassword();
+	validateUsername();
+	validateEmail();
 	
 	$("#passwordraw").keyup(processPassword);
 
 	$("#username").keyup(function(){
 
-		username = $("#username").val();
-		
-		$.getJSON( "?usernametaken=" + username, function( data ) {
-
-			console.log(data.taken);
-			
-				if (data.taken){
-
-					//$("#username").
-					//$( "#googlednsresult" ).html(html);
-				}else{
-					
-				}
-
-			  
-		});
+		validateUsername();
 	});
+
+	$("#email").keyup(function(){
+
+		validateEmail();
+	});
+	
 });
 
 </script>
@@ -267,32 +334,39 @@ $(function(){
 
 	<form class="form-horizontal" role="form" action="#" method="POST">
 	
-	<div class="form-group has-error has-feedback">
-	    <label class="control-label col-sm-2" for="email">Desired Username:</label>
+	
+	<div id="usernameinput" class="form-group has-feedback">
+	    	<label class="control-label col-sm-2" for="email">Desired Username:</label>
 	    <div class="col-sm-10">
-	        <input type="username" class="form-control" id="username" name="username" placeholder="Enter username here. It will become the email username@cs.umb.edu." value="joecohen">
-	    	<span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
+	    	<div class="input-group">
+		        <input  type="username" autocomplete="off" class="form-control" id="username" name="username" placeholder="Enter username here. It will become the email username@cs.umb.edu.">
+		    	<span id="usernameerrortext" class="input-group-addon"></span>
+	    	</div>
 	    </div>
-	</div>
+	</div>	  
+	  
 	  
 	<div class="form-group">
 	    <label class="control-label col-sm-2" for="pwdraw">Password:</label>
 	    <div class="col-sm-10"> 
-	      <input type="password" class="form-control" id="passwordraw" name="passwordraw" placeholder="Enter password" value="aaaaaaaaa">
+	      <input type="password" autocomplete="off" class="form-control" id="passwordraw" name="passwordraw" placeholder="Enter password">
 	    </div>
 	</div>
 	
 	<div class="form-group">
 	    <label class="control-label col-sm-2" for="pwd">Password Hash:</label>
 	    <div class="col-sm-10"> 
-	      <input readonly=true class="form-control" id="password" name="password" placeholder="Please enable JavaScript">
+	      <input readonly=true autocomplete="off" class="form-control" id="password" name="password" placeholder="Please enable JavaScript">
 	    </div>
 	</div>
 	
-	  <div class="form-group">
+	  <div id="emailinput" class="form-group">
 	    <label class="control-label col-sm-2" for="email">UMB Email:</label>
 	    <div class="col-sm-10">
-	      <input type="email" class="form-control" id="email" name="email" placeholder="Enter UMB email (including @umb.edu)" value="joseph.cohen001@umb.edu">
+	    	<div class="input-group">
+	      	<input type="email" class="form-control" id="email" name="email" placeholder="Enter UMB email (including @umb.edu)">
+			<span id="emailerrortext" class="input-group-addon"></span>
+			</div>
 	    </div>
 	  </div>
 
