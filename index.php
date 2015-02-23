@@ -38,8 +38,12 @@ function usernameTaken($username){
 		$userpath = $pathToHome.$username;
 		
 		$val = exec("ls -d ".$userpath);
-		
-		return $val == $userpath;
+
+		if (!empty($val)){
+			return ($val == $userpath)?"true":false;
+		}else{
+			return "false";
+		}
 	}
 	
 	return false;
@@ -48,7 +52,16 @@ function usernameTaken($username){
 
 if ($_GET['usernametaken']){
 
-	return usernameTaken();
+	$username = $_GET['usernametaken'];
+	
+	$taken = false;
+	if (usernameValid($username)){
+		$taken = usernameTaken($username);
+	}
+	
+	echo '{"taken": '.$taken."}";
+	
+	return;
 
 }
 
@@ -180,7 +193,28 @@ $(function(){
 	processPassword();
 	
 	$("#passwordraw").keyup(processPassword);
+
+	$("#username").keyup(function(){
+
+		username = $("#username").val();
+		
+		$.getJSON( "?usernametaken=" + username, function( data ) {
+
+			console.log(data.taken);
+			
+				if (data.taken){
+
+					//$("#username").
+					//$( "#googlednsresult" ).html(html);
+				}else{
+					
+				}
+
+			  
+		});
+	});
 });
+
 </script>
 
 <title>UMB CS Account Management</title>
@@ -190,14 +224,6 @@ $(function(){
 
 </body>
 </html>
-
-
-
-
-
-
-
-    <!-- Static navbar -->
     <nav class="navbar navbar-default navbar-static-top">
       <div class="container">
         <div class="navbar-header">
@@ -215,7 +241,7 @@ $(function(){
             <li><a href="#">Reset Password</a></li>
             <li><a href="mailto:operator@cs.umb.edu?subject=Help with UNIX account">Help</a></li>
           </ul>
-        </div><!--/.nav-collapse -->
+        </div>
       </div>
     </nav>
 
@@ -241,10 +267,11 @@ $(function(){
 
 	<form class="form-horizontal" role="form" action="#" method="POST">
 	
-	<div class="form-group">
+	<div class="form-group has-error has-feedback">
 	    <label class="control-label col-sm-2" for="email">Desired Username:</label>
 	    <div class="col-sm-10">
-	      <input type="username" class="form-control" id="username" name="username" placeholder="Enter username here. It will become the email username@cs.umb.edu." value="joecohen">
+	        <input type="username" class="form-control" id="username" name="username" placeholder="Enter username here. It will become the email username@cs.umb.edu." value="joecohen">
+	    	<span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
 	    </div>
 	</div>
 	  
