@@ -120,7 +120,7 @@ if ($_POST['email'] && $_POST['username'] && $_POST['password']){
 	
 	mail($to, $subject, $message, $headers);
 	
-	echo "Thanks, email is on it's way. Just click the link inside.";
+	echo "Thanks, email is on its way. Just click the link inside.";
 	return;
 	
 }
